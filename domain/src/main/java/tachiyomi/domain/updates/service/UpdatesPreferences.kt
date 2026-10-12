@@ -49,4 +49,9 @@ class UpdatesPreferences(
         "pref_filter_updates_excluded_categories",
         emptyList(),
     )
+
+    val groupByEntry: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_updates_group_by_entry",
+        true,
+    )
 }

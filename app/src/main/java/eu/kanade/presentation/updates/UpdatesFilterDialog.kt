@@ -119,6 +119,30 @@ private fun ColumnScope.FilterSheet(
             onCheckedChange = { toggleScanlatorFilter() },
         )
     }
+
+    val groupByEntry by viewModel.updatesPreferences.groupByEntry.collectAsState()
+
+    fun toggleGroupByEntry() = viewModel.updatesPreferences.groupByEntry.getAndSet { !it }
+
+    Row(
+        modifier = Modifier
+            .clickable { toggleGroupByEntry() }
+            .fillMaxWidth()
+            .padding(horizontal = SettingsItemsPaddings.Horizontal),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = stringResource(MR.strings.action_group_by_entry),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        Switch(
+            checked = groupByEntry,
+            onCheckedChange = { toggleGroupByEntry() },
+        )
+    }
 }
 
 @Composable

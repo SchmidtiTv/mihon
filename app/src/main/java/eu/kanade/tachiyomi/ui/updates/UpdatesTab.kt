@@ -71,6 +71,8 @@ data object UpdatesTab : Tab {
             onMultiMarkAsReadClicked = viewModel::markUpdatesRead,
             onMultiDeleteClicked = viewModel::showConfirmDeleteChapters,
             onUpdateSelected = viewModel::toggleSelection,
+            onToggleGroup = viewModel::toggleGroup,
+            onGroupSelected = viewModel::toggleGroupSelection,
             onOpenChapter = {
                 val intent = ReaderActivity.newIntent(context, it.update.mangaId, it.update.chapterId)
                 context.startActivity(intent)

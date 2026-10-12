@@ -24,6 +24,7 @@ import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.ui.updates.UpdatesGroupKey
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesViewModel
 import kotlinx.coroutines.delay
@@ -60,6 +61,8 @@ fun UpdateScreen(
     onMultiMarkAsReadClicked: (List<UpdatesItem>, read: Boolean) -> Unit,
     onMultiDeleteClicked: (List<UpdatesItem>) -> Unit,
     onUpdateSelected: (UpdatesItem, Boolean, Boolean) -> Unit,
+    onToggleGroup: (UpdatesUiModel.Group) -> Unit,
+    onGroupSelected: (UpdatesUiModel.Group, fromLongPress: Boolean) -> Unit,
     onOpenChapter: (UpdatesItem) -> Unit,
     onFilterClicked: () -> Unit,
     hasActiveFilters: Boolean,
@@ -143,6 +146,8 @@ fun UpdateScreen(
                                 onClickCover = onClickCover,
                                 onClickUpdate = onOpenChapter,
                                 onDownloadChapter = onDownloadChapter,
+                                onToggleGroup = onToggleGroup,
+                                onGroupSelected = onGroupSelected,
                             )
                         }
                     }
@@ -249,5 +254,14 @@ private fun UpdatesBottomBar(
 
 sealed interface UpdatesUiModel {
     data class Header(val date: LocalDate) : UpdatesUiModel
-    data class Item(val item: UpdatesItem) : UpdatesUiModel
+    data class Item(val item: UpdatesItem, val nested: Boolean = false) : UpdatesUiModel
+    data class Group(
+        val date: LocalDate,
+        val mangaId: Long,
+        val items: List<UpdatesItem>,
+        val expanded: Boolean,
+    ) : UpdatesUiModel {
+        val key: UpdatesGroupKey get() = date to mangaId
+        val selected: Boolean get() = items.fastAll { it.selected }
+    }
 }

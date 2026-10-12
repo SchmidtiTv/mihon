@@ -15,7 +15,6 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
-import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.chapter.interactor.SetReadStatus
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.updates.UpdatesUiModel
@@ -23,7 +22,6 @@ import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.library.LibraryUpdateWorker
-import eu.kanade.tachiyomi.util.lang.toLocalDate
 import eu.kanade.tachiyomi.util.system.workManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,6 +93,7 @@ class UpdatesViewModel(
     // First and last selected index in list
     private val selectedPositions: Array<Int> = arrayOf(-1, -1)
     private val selectedChapterIds = MutableStateFlow(emptySet<Long>())
+    private val expandedGroups = MutableStateFlow(emptySet<UpdatesGroupKey>())
 
     private val dialog = MutableStateFlow<Dialog?>(null)
 
@@ -213,6 +212,15 @@ class UpdatesViewModel(
             dialog = dialog,
         )
     }
+        .combine(
+            combine(updatesPreferences.groupByEntry.changes(), expandedGroups, ::Pair),
+        ) { state, (groupByEntry, expandedGroups) ->
+            state.copy(
+                items = state.items.inDisplayOrder(groupByEntry),
+                groupByEntry = groupByEntry,
+                expandedGroups = expandedGroups,
+            )
+        }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope + subscriberGate, subscriberGate.whileSubscribed(5.seconds), State())
 
@@ -449,6 +457,42 @@ class UpdatesViewModel(
         selectedPositions[1] = -1
     }
 
+    fun toggleGroup(group: UpdatesUiModel.Group) {
+        expandedGroups.update { if (group.key in it) it - group.key else it + group.key }
+    }
+
+    fun toggleGroupSelection(group: UpdatesUiModel.Group, fromLongPress: Boolean) {
+        val items = state.value.items
+        val groupIds = group.items.map { it.update.chapterId }
+        val groupIndices = groupIds
+            .map { id -> items.indexOfFirst { it.update.chapterId == id } }
+            .filter { it >= 0 }
+        if (groupIndices.isEmpty()) return
+
+        // Read selection from its own flow, not the derived items, which lag behind it.
+        val currentSelection = selectedChapterIds.value
+        // Only visible items count, since the id set can retain ids filtered out of the list
+        val firstSelection = items.none { it.update.chapterId in currentSelection }
+        val newSelection = currentSelection.toggleGroup(groupIds, fromLongPress).toHashSet()
+
+        if (fromLongPress) {
+            val (fill, positions) = groupLongPressRange(
+                positions = selectedPositions[0] to selectedPositions[1],
+                groupFirst = groupIndices.min(),
+                groupLast = groupIndices.max(),
+                firstSelection = firstSelection,
+            )
+            fill.forEach { newSelection.add(items[it].update.chapterId) }
+            selectedPositions[0] = positions.first
+            selectedPositions[1] = positions.second
+        } else {
+            selectedPositions[0] = items.indexOfFirst { it.update.chapterId in newSelection }
+            selectedPositions[1] = items.indexOfLast { it.update.chapterId in newSelection }
+        }
+
+        selectedChapterIds.update { newSelection }
+    }
+
     fun setDialog(dialog: Dialog?) {
         this.dialog.update { dialog }
     }
@@ -501,23 +545,13 @@ class UpdatesViewModel(
         val hasActiveFilters: Boolean = false,
         val items: List<UpdatesItem> = listOf(),
         val dialog: Dialog? = null,
+        val groupByEntry: Boolean = true,
+        val expandedGroups: Set<UpdatesGroupKey> = emptySet(),
     ) {
         val selected = items.filter { it.selected }
         val selectionMode = selected.isNotEmpty()
 
-        fun getUiModel(): List<UpdatesUiModel> {
-            return items
-                .map { UpdatesUiModel.Item(it) }
-                .insertSeparators { before, after ->
-                    val beforeDate = before?.item?.update?.dateFetch?.toLocalDate()
-                    val afterDate = after?.item?.update?.dateFetch?.toLocalDate()
-                    when {
-                        beforeDate != afterDate && afterDate != null -> UpdatesUiModel.Header(afterDate)
-                        // Return null to avoid adding a separator between two items.
-                        else -> null
-                    }
-                }
-        }
+        fun getUiModel(): List<UpdatesUiModel> = items.toUpdatesUiModels(groupByEntry, expandedGroups)
     }
 
     sealed interface Dialog {
