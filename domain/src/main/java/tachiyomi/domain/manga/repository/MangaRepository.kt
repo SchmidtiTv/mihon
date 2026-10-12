@@ -37,7 +37,7 @@ interface MangaRepository {
 
     suspend fun resetViewerFlags(): Boolean
 
-    suspend fun deleteNonLibraryManga(sourceIds: List<Long>, keepReadManga: Boolean)
+    suspend fun deleteNonLibraryManga(sourceIds: List<Long>, keepReadManga: Boolean): List<Long>
 
     suspend fun setMangaCategories(mangaId: Long, categoryIds: List<Long>)
 

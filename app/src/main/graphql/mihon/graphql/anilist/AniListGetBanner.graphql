@@ -1,0 +1,7 @@
+query AniListGetBanner(
+  $manga_id: Int!,
+) {
+  Media(id: $manga_id, type: MANGA) {
+    bannerImage
+  }
+}

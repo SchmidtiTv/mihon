@@ -62,9 +62,10 @@ import eu.kanade.tachiyomi.databinding.ReaderActivityBinding
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
-import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.AddToLibraryFirst
-import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Error
-import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
+import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.CoverLibraryAddResult.AddToLibraryFirst
+import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.CoverLibraryAddResult.Added
+import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.CoverLibraryAddResult.AddedAsCover
+import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.CoverLibraryAddResult.Error
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
@@ -237,8 +238,8 @@ class ReaderActivity : BaseActivity() {
                     is ReaderViewModel.Event.CopyImage -> {
                         onCopyImageResult(event.uri)
                     }
-                    is ReaderViewModel.Event.SetCoverResult -> {
-                        onSetAsCoverResult(event.result)
+                    is ReaderViewModel.Event.CoverLibraryAddResult -> {
+                        onCoverLibraryAddResult(event.result)
                     }
                 }
             }
@@ -323,7 +324,7 @@ class ReaderActivity : BaseActivity() {
             is ReaderViewModel.Dialog.PageActions -> {
                 ReaderPageActionsDialog(
                     onDismissRequest = onDismissRequest,
-                    onSetAsCover = viewModel::setAsCover,
+                    onAddToCoverLibrary = viewModel::addToCoverLibrary,
                     onShare = viewModel::shareImage,
                     onSave = viewModel::saveImage,
                 )
@@ -769,15 +770,16 @@ class ReaderActivity : BaseActivity() {
     }
 
     /**
-     * Called from the presenter when a page is set as cover or fails. It shows a different message
-     * depending on the [result].
+     * Called from the presenter when a page is added to the cover library or fails. It shows a
+     * different message depending on the [result].
      */
-    private fun onSetAsCoverResult(result: ReaderViewModel.SetAsCoverResult) {
+    private fun onCoverLibraryAddResult(result: ReaderViewModel.CoverLibraryAddResult) {
         toast(
             when (result) {
-                Success -> MR.strings.cover_updated
+                Added -> MR.strings.cover_added_to_library
+                AddedAsCover -> MR.strings.cover_updated
                 AddToLibraryFirst -> MR.strings.notification_first_add_to_library
-                Error -> MR.strings.notification_cover_update_failed
+                Error -> MR.strings.error_importing_covers
             },
         )
     }

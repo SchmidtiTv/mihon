@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.core.net.toUri
 import eu.kanade.tachiyomi.data.database.models.Track
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.JikanPicturesResult
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALListItem
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALListItemStatus
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALManga
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALMangaCoverResult
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALOAuth
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALSearchResult
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALUser
@@ -16,19 +18,23 @@ import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.network.interceptor.rateLimit
 import eu.kanade.tachiyomi.network.parseAs
 import eu.kanade.tachiyomi.util.PkceUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import logcat.LogPriority
 import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.injectLazy
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 import tachiyomi.domain.track.model.Track as DomainTrack
 
 class MyAnimeListApi(
@@ -40,6 +46,10 @@ class MyAnimeListApi(
     private val json: Json by injectLazy()
 
     private val authClient = client.newBuilder().addInterceptor(interceptor).build()
+
+    private val jikanClient = client.newBuilder()
+        .rateLimit(permits = 3, period = 1.seconds)
+        .build()
 
     suspend fun getAccessToken(authCode: String): MALOAuth {
         return withContext(Dispatchers.IO) {
@@ -103,6 +113,53 @@ class MyAnimeListApi(
                     .parseAs<MALManga>()
                     .let { parseSearchItem(it) }
             }
+        }
+    }
+
+    // MyAnimeList's own API only exposes a single cover, so the rest comes from Jikan
+    suspend fun getCovers(remoteId: Long): List<String> {
+        return withContext(Dispatchers.IO) {
+            val mainCover = try {
+                getMainCover(remoteId)
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e)
+                null
+            }
+            val extraCovers = try {
+                getJikanCovers(remoteId)
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e)
+                emptyList()
+            }
+
+            (listOfNotNull(mainCover) + extraCovers).distinct()
+        }
+    }
+
+    private suspend fun getMainCover(remoteId: Long): String? {
+        val url = "$BASE_API_URL/manga".toUri().buildUpon()
+            .appendPath(remoteId.toString())
+            .appendQueryParameter("fields", "main_picture")
+            .build()
+
+        return with(json) {
+            authClient.newCall(GET(url.toString()))
+                .awaitSuccess()
+                .parseAs<MALMangaCoverResult>()
+                .mainPicture
+                ?.large
+                ?.ifBlank { null }
+        }
+    }
+
+    private suspend fun getJikanCovers(remoteId: Long): List<String> {
+        return with(json) {
+            jikanClient.newCall(GET("$JIKAN_API_URL/manga/$remoteId/pictures"))
+                .awaitSuccess()
+                .parseAs<JikanPicturesResult>()
+                .data
+                .mapNotNull { it.jpg?.let { urls -> urls.largeImageUrl ?: urls.imageUrl } }
+                .filter { it.isNotBlank() }
         }
     }
 
@@ -272,6 +329,7 @@ class MyAnimeListApi(
 
         private const val BASE_OAUTH_URL = "https://myanimelist.net/v1/oauth2"
         private const val BASE_API_URL = "https://api.myanimelist.net/v2"
+        private const val JIKAN_API_URL = "https://api.jikan.moe/v4"
 
         private const val SEARCH_FIELDS =
             "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date,authors{first_name,last_name}"

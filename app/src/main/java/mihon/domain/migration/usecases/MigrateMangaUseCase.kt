@@ -5,6 +5,10 @@ import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.hasCustomCover
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.cover.ArtworkLibrary
+import eu.kanade.tachiyomi.data.cover.BannerCache
+import eu.kanade.tachiyomi.data.cover.BannerLibrary
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -24,6 +28,7 @@ import tachiyomi.domain.manga.model.MangaUpdate
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.domain.track.interactor.UpsertTrack
+import java.io.File
 import kotlin.time.Clock
 
 @Inject
@@ -41,6 +46,9 @@ class MigrateMangaUseCase(
     private val getTracks: GetTracks,
     private val upsertTrack: UpsertTrack,
     private val coverCache: CoverCache,
+    private val coverLibrary: CoverLibrary,
+    private val bannerLibrary: BannerLibrary,
+    private val bannerCache: BannerCache,
     private val updateMangaFromRemote: UpdateMangaFromRemote,
 ) {
     private val enhancedServices by lazy { trackerManager.trackers.filterIsInstance<EnhancedTracker>() }
@@ -117,6 +125,27 @@ class MigrateMangaUseCase(
                 }
             }
 
+            if (MigrationFlag.ARTWORK in flags) {
+                copyArtworkLibrary(current.id, target.id, coverLibrary, coverLibrary, coverLibrary::getLabel)
+                copyArtworkLibrary(current.id, target.id, bannerLibrary, bannerLibrary) { file ->
+                    // Banners without a label are named after the source they were being used with
+                    bannerLibrary.getLabel(file) ?: currentSource?.name
+                }
+                if (bannerCache.getBanner(target.id) == null) {
+                    bannerCache.getBanner(current.id)?.let { file ->
+                        file.inputStream().use {
+                            bannerCache.setBanner(target.id, it, bannerCache.getBannerUrl(current.id))
+                        }
+                    }
+                }
+            }
+
+            if (MigrationFlag.SOURCE_COVER in flags) {
+                coverCache.getCoverFile(current.thumbnailUrl)
+                    ?.takeIf { it.exists() }
+                    ?.let { file -> coverLibrary.addImageIfAbsent(target.id, file.readBytes()) }
+            }
+
             val currentMangaUpdate = MangaUpdate(current.id) {
                 favoriteAt = null
             }
@@ -133,6 +162,18 @@ class MigrateMangaUseCase(
             if (e is CancellationException) {
                 throw e
             }
+        }
+    }
+
+    private fun copyArtworkLibrary(
+        sourceMangaId: Long,
+        targetMangaId: Long,
+        sourceLibrary: ArtworkLibrary,
+        targetLibrary: ArtworkLibrary,
+        labelFor: (File) -> String?,
+    ) {
+        sourceLibrary.getImages(sourceMangaId).forEach { file ->
+            targetLibrary.addImageIfAbsent(targetMangaId, file.readBytes(), labelFor(file))
         }
     }
 }

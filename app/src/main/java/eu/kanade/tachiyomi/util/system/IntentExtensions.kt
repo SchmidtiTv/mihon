@@ -37,6 +37,10 @@ inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? {
     return IntentCompat.getParcelableExtra(this, name, T::class.java)
 }
 
+inline fun <reified T> Intent.getParcelableArrayListExtraCompat(name: String): List<T>? {
+    return IntentCompat.getParcelableArrayListExtra(this, name, T::class.java)
+}
+
 inline fun <reified T : Serializable> Intent.getSerializableExtraCompat(name: String): T? {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         getSerializableExtra(name, T::class.java)

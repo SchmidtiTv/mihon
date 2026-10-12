@@ -1,5 +1,6 @@
 package tachiyomi.source.local.image
 
+import android.content.ContentResolver
 import android.content.Context
 import com.hippo.unifile.UniFile
 import dev.zacsweers.metro.AppScope
@@ -10,7 +11,9 @@ import eu.kanade.tachiyomi.util.storage.DiskUtil
 import tachiyomi.core.common.storage.nameWithoutExtension
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.source.local.io.LocalSourceFileSystem
+import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 
 private const val DEFAULT_COVER_NAME = "cover.jpg"
 
@@ -42,7 +45,7 @@ class LocalCoverManager(
         val targetFile = find(manga.url) ?: directory.createFile(DEFAULT_COVER_NAME)!!
 
         inputStream.use { input ->
-            targetFile.openOutputStream().use { output ->
+            targetFile.openTruncatedOutputStream().use { output ->
                 input.copyTo(output)
             }
         }
@@ -51,5 +54,13 @@ class LocalCoverManager(
 
         manga.thumbnail_url = targetFile.uri.toString()
         return targetFile
+    }
+
+    // UniFile's "w" mode isn't truncated by every documents provider, so a smaller cover would keep the tail of the
+    // one it replaced. The file is kept rather than recreated, as its uri is the manga's thumbnail
+    private fun UniFile.openTruncatedOutputStream(): OutputStream {
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) return openOutputStream()
+        return context.contentResolver.openOutputStream(uri, "wt")
+            ?: throw IOException("Couldn't open $uri for writing")
     }
 }

@@ -124,8 +124,10 @@ class MangaRepositoryImpl(
         }
     }
 
-    override suspend fun deleteNonLibraryManga(sourceIds: List<Long>, keepReadManga: Boolean) {
-        database.mangaQueries.deleteNonLibraryManga(sourceIds, keepReadManga.toLong())
+    override suspend fun deleteNonLibraryManga(sourceIds: List<Long>, keepReadManga: Boolean): List<Long> {
+        return database.mangaQueries
+            .deleteNonLibraryManga(sourceIds, keepReadManga.toLong())
+            .awaitAsList()
     }
 
     override suspend fun setMangaCategories(mangaId: Long, categoryIds: List<Long>) {

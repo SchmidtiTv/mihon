@@ -141,6 +141,7 @@ class BackupRestorer(
                     backup.backupManga,
                     if (options.categories) backup.backupCategories else emptyList(),
                     restoreCategoriesJob,
+                    options.artworkLibraries,
                 )
             }
             if (options.extensionStores) {
@@ -178,6 +179,7 @@ class BackupRestorer(
         backupMangas: List<BackupManga>,
         backupCategories: List<BackupCategory>,
         categoriesRestoreJob: Job?,
+        restoreArtwork: Boolean,
     ) = launch {
         categoriesRestoreJob?.join()
         mangaRestorer.sortByNew(backupMangas)
@@ -185,7 +187,7 @@ class BackupRestorer(
             .forEach { chunk ->
                 val restoredAsBatch = try {
                     ensureActive()
-                    mangaRestorer.restore(chunk, backupCategories)
+                    mangaRestorer.restore(chunk, backupCategories, restoreArtwork)
                     true
                 } catch (e: Exception) {
                     ensureActive()
@@ -200,7 +202,7 @@ class BackupRestorer(
                         ensureActive()
 
                         try {
-                            mangaRestorer.restore(listOf(it), backupCategories)
+                            mangaRestorer.restore(listOf(it), backupCategories, restoreArtwork)
                         } catch (e: Exception) {
                             ensureActive()
                             val sourceName = sourceMapping[it.source] ?: it.source.toString()

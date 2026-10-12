@@ -9,10 +9,9 @@ enum class DownloadAction {
     BOOKMARKED_CHAPTERS,
 }
 
-enum class EditCoverAction {
-    EDIT,
-    DELETE,
-    ADD_TO_LIBRARY,
+enum class ArtworkKind {
+    COVER,
+    BANNER,
 }
 
 enum class MangaScreenItem {

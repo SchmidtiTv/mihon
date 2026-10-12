@@ -35,9 +35,11 @@ import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.presentation.manga.DownloadAction
+import eu.kanade.presentation.manga.MangaBanner
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.cover.BannerCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.model.Download
@@ -64,6 +66,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -139,6 +142,7 @@ class MangaViewModel(
     private val sourceManager: SourceManager,
     private val refreshTracks: RefreshTracks,
     private val coverCache: CoverCache,
+    private val bannerCache: BannerCache,
 ) : ViewModel() {
 
     private val subscriberGate = SubscriberGate()
@@ -249,18 +253,23 @@ class MangaViewModel(
         .distinctUntilChanged()
         .onStart { emit(0 to false) }
 
+    private val banner = bannerCache.changes
+        .filter { it == mangaId }
+        .map { getBanner() }
+        .onStart { emit(getBanner()) }
+
     val state: StateFlow<State> = combine(
         mangaAndChapters,
         scanlators,
         trackers,
         combine(selectedChapterIds, queuedDownloadStates.pausedWhileUnsubscribed(), ::Pair),
-        combine(dialog, isRefreshingData, ::Pair),
+        combine(dialog, isRefreshingData, banner, ::Triple),
     ) {
             mangaAndChapters,
             (availableScanlators, excludedScanlators),
             (trackingCount, hasLoggedInTrackers),
             (selectedIds, downloads),
-            (dialog, isRefreshingData),
+            (dialog, isRefreshingData, banner),
         ->
         State.Success(
             manga = mangaAndChapters.manga,
@@ -282,6 +291,7 @@ class MangaViewModel(
             isRefreshingData = isRefreshingData,
             dialog = dialog,
             hideMissingChapters = hideMissingChapters,
+            banner = banner,
         )
     }
         // Composition would otherwise build these on first read, on the main thread, for every new state
@@ -1061,6 +1071,7 @@ class MangaViewModel(
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
         data object FullCover : Dialog
+        data object Banner : Dialog
     }
 
     fun dismissDialog() {
@@ -1082,6 +1093,12 @@ class MangaViewModel(
     fun showCoverDialog() {
         dialog.value = Dialog.FullCover
     }
+
+    fun showBannerDialog() {
+        dialog.value = Dialog.Banner
+    }
+
+    private fun getBanner(): MangaBanner? = bannerCache.getBanner(mangaId)?.let { MangaBanner(it) }
 
     fun showMigrateDialog(duplicate: Manga) {
         val manga = successState?.manga ?: return
@@ -1113,6 +1130,7 @@ class MangaViewModel(
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hideMissingChapters: Boolean = false,
+            val banner: MangaBanner? = null,
         ) : State {
             val processedChapters by lazy {
                 chapters.applyFilters(manga).toList()

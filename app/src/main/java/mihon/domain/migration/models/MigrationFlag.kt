@@ -1,13 +1,15 @@
 package mihon.domain.migration.models
 
 enum class MigrationFlag(val flag: Int) {
-    CHAPTER(0b00001),
-    CATEGORY(0b00010),
+    CHAPTER(0b00000001),
+    CATEGORY(0b00000010),
 
-    // 0b00100 was used for manga trackers
-    CUSTOM_COVER(0b01000),
-    NOTES(0b100000),
-    REMOVE_DOWNLOAD(0b10000),
+    // 0b00000100 was used for manga trackers
+    CUSTOM_COVER(0b00001000),
+    REMOVE_DOWNLOAD(0b00010000),
+    NOTES(0b00100000),
+    ARTWORK(0b01000000),
+    SOURCE_COVER(0b10000000),
     ;
 
     companion object {

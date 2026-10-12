@@ -20,6 +20,9 @@ import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.presentation.library.components.LibraryToolbarTitle
 import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.cover.BannerCache
+import eu.kanade.tachiyomi.data.cover.BannerLibrary
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -94,6 +97,9 @@ class LibraryViewModel(
     private val preferences: BasePreferences,
     private val libraryPreferences: LibraryPreferences,
     private val coverCache: CoverCache,
+    private val coverLibrary: CoverLibrary,
+    private val bannerLibrary: BannerLibrary,
+    private val bannerCache: BannerCache,
     private val sourceManager: SourceManager,
     private val downloadManager: DownloadManager,
     private val downloadCache: DownloadCache,
@@ -560,8 +566,14 @@ class LibraryViewModel(
      * @param mangas the list of manga to delete.
      * @param deleteFromLibrary whether to delete manga from library.
      * @param deleteChapters whether to delete downloaded chapters.
+     * @param deleteArtwork whether to delete the covers and banners imported for the manga.
      */
-    fun removeMangas(mangas: List<Manga>, deleteFromLibrary: Boolean, deleteChapters: Boolean) {
+    fun removeMangas(
+        mangas: List<Manga>,
+        deleteFromLibrary: Boolean,
+        deleteChapters: Boolean,
+        deleteArtwork: Boolean,
+    ) {
         appScope.launch {
             if (deleteFromLibrary) {
                 val toDelete = mangas.map {
@@ -579,6 +591,14 @@ class LibraryViewModel(
                     if (source != null) {
                         downloadManager.deleteManga(manga, source)
                     }
+                }
+            }
+
+            if (deleteArtwork) {
+                mangas.forEach { manga ->
+                    coverLibrary.deleteImages(manga.id)
+                    bannerLibrary.deleteImages(manga.id)
+                    bannerCache.deleteBanner(manga.id)
                 }
             }
         }

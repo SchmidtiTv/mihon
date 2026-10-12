@@ -246,8 +246,8 @@ data object LibraryTab : Tab {
                 DeleteLibraryMangaDialog(
                     containsLocalManga = dialog.manga.any(Manga::isLocal),
                     onDismissRequest = onDismissRequest,
-                    onConfirm = { deleteManga, deleteChapter ->
-                        viewModel.removeMangas(dialog.manga, deleteManga, deleteChapter)
+                    onConfirm = { deleteManga, deleteChapter, deleteArtwork ->
+                        viewModel.removeMangas(dialog.manga, deleteManga, deleteChapter, deleteArtwork)
                         viewModel.clearSelection()
                     },
                 )

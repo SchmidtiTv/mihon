@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -90,10 +91,13 @@ import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.deeplink.DeepLinkScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import eu.kanade.tachiyomi.ui.manga.artwork.ArtworkImportScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
 import eu.kanade.tachiyomi.ui.more.OnboardingScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.util.system.dpToPx
+import eu.kanade.tachiyomi.util.system.getParcelableArrayListExtraCompat
+import eu.kanade.tachiyomi.util.system.getParcelableExtraCompat
 import eu.kanade.tachiyomi.util.system.isBenchmarkBuildType
 import eu.kanade.tachiyomi.util.system.isNavigationBarNeedsScrim
 import eu.kanade.tachiyomi.util.system.updaterEnabled
@@ -599,6 +603,14 @@ class MainActivity : BaseActivity() {
             )
         }
 
+        val sharedImages = intent.getSharedImageUris()
+        if (sharedImages.isNotEmpty()) {
+            navigator.popUntilRoot()
+            navigator.push(ArtworkImportScreen(sharedImages.map(Uri::toString)))
+            ready = true
+            return true
+        }
+
         val tabToOpen = when (intent.action) {
             Constants.SHORTCUT_LIBRARY -> HomeScreen.Tab.Library()
             Constants.SHORTCUT_MANGA -> {
@@ -664,6 +676,15 @@ class MainActivity : BaseActivity() {
 
         ready = true
         return true
+    }
+
+    private fun Intent.getSharedImageUris(): List<Uri> {
+        if (type?.startsWith("image/") != true) return emptyList()
+        return when (action) {
+            Intent.ACTION_SEND -> listOfNotNull(getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM))
+            Intent.ACTION_SEND_MULTIPLE -> getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM).orEmpty()
+            else -> emptyList()
+        }
     }
 
     private fun Intent.isAddExtensionStoreIntent(): Boolean {

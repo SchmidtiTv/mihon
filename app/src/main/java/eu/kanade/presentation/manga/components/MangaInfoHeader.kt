@@ -7,8 +7,10 @@ import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -55,6 +58,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +75,7 @@ import com.mikepenz.markdown.model.markdownAnnotator
 import com.mikepenz.markdown.model.markdownAnnotatorConfig
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.manga.MangaBanner
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.getNameForMangaInfo
@@ -117,34 +122,72 @@ fun MangaInfoBox(
     appBarPadding: Dp,
     manga: Manga,
     source: Source,
+    banner: MangaBanner?,
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
+    onEditBanner: (() -> Unit)?,
     doSearch: (query: String, global: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
+    val editBanner = onEditBanner?.takeIf { banner != null }
+
+    BoxWithConstraints(modifier = modifier) {
         // Backdrop
         val backdropGradientColors = listOf(
             Color.Transparent,
             MaterialTheme.colorScheme.background,
         )
+        val context = LocalContext.current
+        // A banner is shown unblurred. The tablet header is a narrow column that would crop it to a sliver, so there
+        // it's a strip under the app bar, with the cover overlapping its lower part
+        val isBannerStrip = isTabletUi && banner != null
+        val bannerStripHeight = maxWidth / MangaCover.Banner.ratio
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(manga)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
+            model = remember(manga, banner) {
+                ImageRequest.Builder(context)
+                    .data(banner?.file ?: manga)
+                    .apply {
+                        if (banner != null) {
+                            memoryCacheKey("${banner.file.absolutePath}_${banner.lastModified}")
+                        }
+                    }
+                    .crossfade(true)
+                    .build()
+            },
+            contentDescription = editBanner?.let { stringResource(MR.strings.action_edit_banner) },
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .matchParentSize()
+                .then(
+                    if (isBannerStrip) {
+                        Modifier
+                            .padding(top = appBarPadding)
+                            .fillMaxWidth()
+                            .aspectRatio(MangaCover.Banner.ratio)
+                    } else {
+                        Modifier.matchParentSize()
+                    },
+                )
                 .drawWithContent {
                     drawContent()
                     drawRect(
                         brush = Brush.verticalGradient(colors = backdropGradientColors),
                     )
                 }
-                .blur(4.dp)
-                .alpha(0.2f),
+                .then(if (banner == null) Modifier.blur(4.dp) else Modifier)
+                .alpha(
+                    when {
+                        banner == null -> 0.2f
+                        isBannerStrip -> 0.75f
+                        else -> 0.35f
+                    },
+                )
+                .then(
+                    if (editBanner != null) {
+                        Modifier.clickable(onClick = editBanner, role = Role.Button)
+                    } else {
+                        Modifier
+                    },
+                ),
         )
 
         // Manga & source info
@@ -160,7 +203,7 @@ fun MangaInfoBox(
                 )
             } else {
                 MangaAndSourceTitlesLarge(
-                    appBarPadding = appBarPadding,
+                    appBarPadding = if (isBannerStrip) appBarPadding + bannerStripHeight * 0.6f else appBarPadding,
                     manga = manga,
                     source = source,
                     isStubSource = isStubSource,

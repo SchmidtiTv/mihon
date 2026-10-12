@@ -111,6 +111,7 @@ fun MangaScreen(
     onEditCategoryClicked: (() -> Unit)?,
     onEditFetchIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onEditBanner: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -161,6 +162,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onEditBanner = onEditBanner,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -198,6 +200,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onEditBanner = onEditBanner,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -245,6 +248,7 @@ private fun MangaScreenSmallImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onEditBanner: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -301,6 +305,7 @@ private fun MangaScreenSmallImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onEditBanner = onEditBanner,
                 onClickEditNotes = onEditNotesClicked,
                 actionModeCounter = state.selectedChapters.size,
                 onCancelActionMode = { onAllChapterSelected(false) },
@@ -374,8 +379,10 @@ private fun MangaScreenSmallImpl(
                             appBarPadding = topPadding,
                             manga = state.manga,
                             source = remember { state.source },
+                            banner = state.banner,
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
+                            onEditBanner = onEditBanner,
                             doSearch = onSearch,
                         )
                     }
@@ -477,6 +484,7 @@ fun MangaScreenLargeImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onEditBanner: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -526,6 +534,7 @@ fun MangaScreenLargeImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onEditBanner = onEditBanner,
                 onClickEditNotes = onEditNotesClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 actionModeCounter = state.selectedChapters.size,
@@ -598,8 +607,10 @@ fun MangaScreenLargeImpl(
                             appBarPadding = contentPadding.calculateTopPadding(),
                             manga = state.manga,
                             source = remember { state.source },
+                            banner = state.banner,
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
+                            onEditBanner = onEditBanner,
                             doSearch = onSearch,
                         )
                         MangaActionRow(

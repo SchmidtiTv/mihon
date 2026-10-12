@@ -41,6 +41,9 @@ import eu.kanade.presentation.browse.components.SourceIcon
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.cover.BannerCache
+import eu.kanade.tachiyomi.data.cover.BannerLibrary
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -234,6 +237,9 @@ class ClearDatabaseViewModel(
     private val mangaRepository: MangaRepository,
     private val historyRepository: HistoryRepository,
     private val getSourcesWithNonLibraryManga: GetSourcesWithNonLibraryManga,
+    private val coverLibrary: CoverLibrary,
+    private val bannerLibrary: BannerLibrary,
+    private val bannerCache: BannerCache,
 ) : ViewModel() {
 
     val state: StateFlow<ClearDatabaseViewModel.State>
@@ -258,8 +264,15 @@ class ClearDatabaseViewModel(
         val state = state.value as? State.Ready ?: return
         // Finishes even if the screen is left while it runs
         appScope.launch {
-            mangaRepository.deleteNonLibraryManga(state.selection, keepReadManga)
+            val deletedMangaIds = mangaRepository.deleteNonLibraryManga(state.selection, keepReadManga)
             historyRepository.deleteResetHistory()
+
+            // Ids can be reused, so a new entry would otherwise inherit their artwork
+            deletedMangaIds.forEach { mangaId ->
+                coverLibrary.deleteImages(mangaId)
+                bannerLibrary.deleteImages(mangaId)
+                bannerCache.deleteBanner(mangaId)
+            }
         }.join()
     }
 

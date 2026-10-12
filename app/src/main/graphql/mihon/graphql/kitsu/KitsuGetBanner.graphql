@@ -1,0 +1,13 @@
+query KitsuGetBanner(
+  $id: ID!,
+) {
+  findMangaById(
+    id: $id,
+  ) {
+    bannerImage {
+      original {
+        url
+      }
+    }
+  }
+}

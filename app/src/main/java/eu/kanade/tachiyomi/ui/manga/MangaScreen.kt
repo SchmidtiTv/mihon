@@ -28,8 +28,9 @@ import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.manga.ChapterSettingsDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
-import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
+import eu.kanade.presentation.manga.components.BannerGalleryDialog
+import eu.kanade.presentation.manga.components.CoverGalleryDialog
 import eu.kanade.presentation.manga.components.DeleteChaptersDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
@@ -160,6 +161,7 @@ class MangaScreen(
             onMigrateClicked = {
                 navigator.push(MigrationConfigScreen(successState.manga.id))
             }.takeIf { successState.manga.favorite },
+            onEditBanner = viewModel::showBannerDialog.takeIf { successState.manga.favorite },
             onEditNotesClicked = { navigator.push(MangaNotesScreen(manga = successState.manga)) },
             onMultiBookmarkClicked = viewModel::bookmarkChapters,
             onMultiMarkAsReadClicked = viewModel::markChaptersRead,
@@ -248,32 +250,75 @@ class MangaScreen(
                     onDismissRequest = onDismissRequest,
                 )
             }
+            MangaViewModel.Dialog.Banner -> {
+                val vm =
+                    assistedMetroViewModel<MangaBannerViewModel, MangaBannerViewModel.Factory> {
+                        create(mangaId = mangaId)
+                    }
+                val galleryState by vm.galleryState.collectAsStateWithLifecycle()
+                val hasBanner by vm.hasBanner.collectAsStateWithLifecycle()
+                val getBannerContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+                    if (it == null) return@rememberLauncherForActivityResult
+                    vm.importBanner(context, it)
+                }
+
+                LaunchedEffect(Unit) {
+                    vm.openBannerGallery(context)
+                    vm.dismissRequests.collect { onDismissRequest() }
+                }
+
+                BannerGalleryDialog(
+                    state = galleryState,
+                    hasBanner = hasBanner,
+                    onUseBanner = { banner -> vm.setBanner(context, banner) },
+                    onDeleteBanner = { banner -> vm.deleteImportedBanner(context, banner) },
+                    onSaveBanner = { banner -> vm.saveBanner(context, banner) },
+                    onLabelBanner = { banner, label -> vm.labelBanner(banner, label) },
+                    onImportBanner = { getBannerContent.launch("image/*") },
+                    onRemoveBanner = { vm.removeBanner(context) },
+                    onDismissRequest = onDismissRequest,
+                    onRetry = { vm.openBannerGallery(context) },
+                )
+            }
             MangaViewModel.Dialog.FullCover -> {
                 val vm =
                     assistedMetroViewModel<MangaCoverViewModel, MangaCoverViewModel.Factory> {
                         create(mangaId = mangaId)
                     }
                 val manga by vm.state.collectAsStateWithLifecycle()
+                val canEditCover by vm.canEditCover.collectAsStateWithLifecycle()
+                val galleryState by vm.galleryState.collectAsStateWithLifecycle()
                 if (manga != null) {
                     val getContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
                         if (it == null) return@rememberLauncherForActivityResult
-                        vm.editCover(context, it)
+                        vm.importCover(context, it)
+                    }
+                    val openCoverGallery: (() -> Unit)? = if (canEditCover) {
+                        { vm.openCoverGallery(context) }
+                    } else {
+                        null
                     }
                     MangaCoverDialog(
                         manga = manga!!,
-                        snackbarHostState = vm.snackbarHostState,
-                        isCustomCover = remember(manga) { manga!!.hasCustomCover() },
                         onShareClick = { vm.shareCover(context) },
                         onSaveClick = { vm.saveCover(context) },
-                        onEditClick = {
-                            when (it) {
-                                EditCoverAction.EDIT -> getContent.launch("image/*")
-                                EditCoverAction.DELETE -> vm.deleteCustomCover(context)
-                                EditCoverAction.ADD_TO_LIBRARY -> vm.addToLibraryWarning(context)
-                            }
-                        },
+                        onEditClick = openCoverGallery,
                         onDismissRequest = onDismissRequest,
                     )
+                    galleryState?.let {
+                        CoverGalleryDialog(
+                            state = it,
+                            hasCustomCover = remember(manga) { manga!!.hasCustomCover() },
+                            onUseCover = { cover -> vm.setCover(context, cover) },
+                            onDeleteCover = { cover -> vm.deleteImportedCover(context, cover) },
+                            onSaveCover = { cover -> vm.saveCover(context, cover) },
+                            onLabelCover = { cover, label -> vm.labelCover(cover, label) },
+                            onImportCover = { getContent.launch("image/*") },
+                            onRemoveCover = { vm.deleteCustomCover(context) },
+                            onDismissRequest = vm::closeCoverGallery,
+                            onRetry = { vm.openCoverGallery(context) },
+                        )
+                    }
                 } else {
                     LoadingScreen(Modifier.systemBarsPadding())
                 }

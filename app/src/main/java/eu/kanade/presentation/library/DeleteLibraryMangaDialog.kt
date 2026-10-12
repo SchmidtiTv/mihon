@@ -19,7 +19,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 fun DeleteLibraryMangaDialog(
     containsLocalManga: Boolean,
     onDismissRequest: () -> Unit,
-    onConfirm: (Boolean, Boolean) -> Unit,
+    onConfirm: (Boolean, Boolean, Boolean) -> Unit,
 ) {
     var list by remember {
         mutableStateOf(
@@ -28,6 +28,7 @@ fun DeleteLibraryMangaDialog(
                 if (!containsLocalManga) {
                     add(CheckboxState.State.None(MR.strings.downloaded_chapters))
                 }
+                add(CheckboxState.State.None(MR.strings.artwork_libraries))
             },
         )
     }
@@ -44,8 +45,9 @@ fun DeleteLibraryMangaDialog(
                 onClick = {
                     onDismissRequest()
                     onConfirm(
-                        list[0].isChecked,
-                        list.getOrElse(1) { CheckboxState.State.None(0) }.isChecked,
+                        list.isChecked(MR.strings.manga_from_library),
+                        list.isChecked(MR.strings.downloaded_chapters),
+                        list.isChecked(MR.strings.artwork_libraries),
                     )
                 },
             ) {
@@ -74,4 +76,8 @@ fun DeleteLibraryMangaDialog(
             }
         },
     )
+}
+
+private fun List<CheckboxState.State<StringResource>>.isChecked(stringRes: StringResource): Boolean {
+    return any { it.value == stringRes && it.isChecked }
 }

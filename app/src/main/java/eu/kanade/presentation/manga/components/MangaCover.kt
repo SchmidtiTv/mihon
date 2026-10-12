@@ -18,6 +18,7 @@ import eu.kanade.tachiyomi.R
 enum class MangaCover(val ratio: Float) {
     Square(1f / 1f),
     Book(2f / 3f),
+    Banner(3f / 1f),
     ;
 
     @Composable

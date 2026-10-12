@@ -10,26 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -49,8 +41,6 @@ import coil3.request.SuccessResult
 import coil3.size.Size
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
-import eu.kanade.presentation.components.DropdownMenu
-import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.tachiyomi.data.coil.ImageDecoder
 import eu.kanade.tachiyomi.data.coil.newDecoder
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
@@ -67,16 +57,13 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.clickableNoIndication
-import tachiyomi.source.local.isLocal
 
 @Composable
 fun MangaCoverDialog(
     manga: Manga,
-    isCustomCover: Boolean,
-    snackbarHostState: SnackbarHostState,
     onShareClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onEditClick: ((EditCoverAction) -> Unit)?,
+    onEditClick: (() -> Unit)?,
     onDismissRequest: () -> Unit,
 ) {
     val useNewRenderer = LocalContext.current.appGraph.basePreferences.highQualityRenderer.get()
@@ -90,7 +77,6 @@ fun MangaCoverDialog(
         ),
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             containerColor = Color.Transparent,
             bottomBar = {
                 Row(
@@ -110,7 +96,7 @@ fun MangaCoverDialog(
                     Spacer(modifier = Modifier.weight(1f))
                     ActionsPill {
                         AppBarActions(
-                            actions = listOf(
+                            actions = listOfNotNull(
                                 AppBar.Action(
                                     title = stringResource(MR.strings.action_share),
                                     icon = MaterialSymbols.Rounded.Share,
@@ -121,49 +107,15 @@ fun MangaCoverDialog(
                                     icon = MaterialSymbols.Rounded.Save,
                                     onClick = onSaveClick,
                                 ),
+                                onEditClick?.let {
+                                    AppBar.Action(
+                                        title = stringResource(MR.strings.action_edit_cover),
+                                        icon = MaterialSymbols.Rounded.Edit,
+                                        onClick = it,
+                                    )
+                                },
                             ),
                         )
-                        if (onEditClick != null) {
-                            Box {
-                                var expanded by remember { mutableStateOf(false) }
-                                IconButton(
-                                    onClick = {
-                                        when {
-                                            !manga.favorite && !manga.isLocal() -> {
-                                                onEditClick(EditCoverAction.ADD_TO_LIBRARY)
-                                            }
-                                            isCustomCover -> expanded = true
-                                            else -> onEditClick(EditCoverAction.EDIT)
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.Edit,
-                                        contentDescription = stringResource(MR.strings.action_edit_cover),
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    offset = DpOffset(8.dp, 0.dp),
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(text = stringResource(MR.strings.action_edit)) },
-                                        onClick = {
-                                            onEditClick(EditCoverAction.EDIT)
-                                            expanded = false
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(text = stringResource(MR.strings.action_delete)) },
-                                        onClick = {
-                                            onEditClick(EditCoverAction.DELETE)
-                                            expanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             },

@@ -15,6 +15,16 @@
         <item quantity="other">In %1$d days</item>
     </plurals>
 
+    <plurals name="covers_added_to_library">
+        <item quantity="one">Cover added to %2$s</item>
+        <item quantity="other">%1$d covers added to %2$s</item>
+    </plurals>
+
+    <plurals name="banners_added_to_library">
+        <item quantity="one">Banner added to %2$s</item>
+        <item quantity="other">%1$d banners added to %2$s</item>
+    </plurals>
+
     <plurals name="num_categories">
         <item quantity="one">%d category</item>
         <item quantity="other">%d categories</item>

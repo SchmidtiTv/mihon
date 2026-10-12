@@ -4,6 +4,7 @@ import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.models.Track
 import eu.kanade.tachiyomi.data.track.BaseTracker
+import eu.kanade.tachiyomi.data.track.CoverProvidingTracker
 import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALOAuth
@@ -12,7 +13,7 @@ import tachiyomi.i18n.MR
 import uy.kohesive.injekt.injectLazy
 import tachiyomi.domain.track.model.Track as DomainTrack
 
-class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker {
+class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker, CoverProvidingTracker {
 
     companion object {
         const val READING = 1L
@@ -108,6 +109,10 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker {
             track.score = 0.0
             add(track)
         }
+    }
+
+    override suspend fun getCovers(track: DomainTrack): List<String> {
+        return api.getCovers(track.remoteId)
     }
 
     override suspend fun search(query: String): List<TrackSearch> {

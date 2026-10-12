@@ -29,6 +29,9 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.domain.manga.model.hasCustomCover
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.cover.BannerCache
+import eu.kanade.tachiyomi.data.cover.BannerLibrary
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -135,6 +138,9 @@ internal fun Screen.MigrateMangaDialog(
 class MigrateDialogViewModel(
     private val sourcePreference: SourcePreferences,
     private val coverCache: CoverCache,
+    private val coverLibrary: CoverLibrary,
+    private val bannerLibrary: BannerLibrary,
+    private val bannerCache: BannerCache,
     private val downloadManager: DownloadManager,
     private val migrateManga: MigrateMangaUseCase,
 ) : ViewModel() {
@@ -151,6 +157,10 @@ class MigrateDialogViewModel(
                     MigrationFlag.CUSTOM_COVER -> current.hasCustomCover(coverCache)
                     MigrationFlag.NOTES -> current.notes.isNotBlank()
                     MigrationFlag.REMOVE_DOWNLOAD -> downloadManager.getDownloadCount(current) > 0
+                    MigrationFlag.ARTWORK -> coverLibrary.getImages(current.id).isNotEmpty() ||
+                        bannerLibrary.getImages(current.id).isNotEmpty() ||
+                        bannerCache.getBanner(current.id) != null
+                    MigrationFlag.SOURCE_COVER -> coverCache.getCoverFile(current.thumbnailUrl)?.exists() == true
                 }
                 if (applicable) add(it)
             }

@@ -49,6 +49,9 @@ class BackupManga(
     @ProtoNumber(111) var initialized: Boolean = false,
     @ProtoNumber(112) var memo: ByteArray = JsonObjectEmptyBytes,
     @ProtoNumber(113) var nextUpdate: Long = 0,
+    @ProtoNumber(114) var coverLibrary: List<BackupArtwork> = emptyList(),
+    @ProtoNumber(115) var bannerLibrary: List<BackupArtwork> = emptyList(),
+    @ProtoNumber(116) var banner: ByteArray? = null,
 ) {
     fun getMangaImpl(): Manga {
         return Manga.create().copy(

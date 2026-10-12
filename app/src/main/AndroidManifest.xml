@@ -109,6 +109,16 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.tachibk" />
             </intent-filter>
 
+            <!-- Add shared images to the cover or the banner library of an entry -->
+            <intent-filter android:label="@string/action_import_artwork">
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
             <!--suppress AndroidDomInspection -->
             <meta-data
                 android:name="android.app.shortcuts"

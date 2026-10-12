@@ -1,6 +1,7 @@
 package eu.kanade.presentation.reader
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -10,7 +11,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,17 +23,18 @@ import mihon.icons.materialsymbols.rounded.Save
 import mihon.icons.materialsymbols.rounded.Share
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.ActionButton
+import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 
 @Composable
 fun ReaderPageActionsDialog(
     onDismissRequest: () -> Unit,
-    onSetAsCover: () -> Unit,
+    onAddToCoverLibrary: (setAsCover: Boolean) -> Unit,
     onShare: (Boolean) -> Unit,
     onSave: () -> Unit,
 ) {
-    var showSetCoverDialog by remember { mutableStateOf(false) }
+    var showAddCoverDialog by rememberSaveable { mutableStateOf(false) }
 
     AdaptiveSheet(onDismissRequest = onDismissRequest) {
         Row(
@@ -41,9 +43,9 @@ fun ReaderPageActionsDialog(
         ) {
             ActionButton(
                 modifier = Modifier.weight(1f),
-                title = stringResource(MR.strings.set_as_cover),
+                title = stringResource(MR.strings.action_add_to_cover_library),
                 icon = MaterialSymbols.Rounded.Photo,
-                onClick = { showSetCoverDialog = true },
+                onClick = { showAddCoverDialog = true },
             )
             ActionButton(
                 modifier = Modifier.weight(1f),
@@ -75,28 +77,40 @@ fun ReaderPageActionsDialog(
         }
     }
 
-    if (showSetCoverDialog) {
-        SetCoverDialog(
-            onConfirm = {
-                onSetAsCover()
-                showSetCoverDialog = false
+    if (showAddCoverDialog) {
+        AddCoverDialog(
+            onConfirm = { setAsCover ->
+                onAddToCoverLibrary(setAsCover)
+                showAddCoverDialog = false
             },
-            onDismiss = { showSetCoverDialog = false },
+            onDismiss = { showAddCoverDialog = false },
         )
     }
 }
 
 @Composable
-private fun SetCoverDialog(
-    onConfirm: () -> Unit,
+private fun AddCoverDialog(
+    onConfirm: (setAsCover: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var setAsCover by rememberSaveable { mutableStateOf(false) }
+
     AlertDialog(
         text = {
-            Text(stringResource(MR.strings.confirm_set_image_as_cover))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+            ) {
+                Text(stringResource(MR.strings.confirm_add_image_to_cover_library))
+
+                LabeledCheckbox(
+                    label = stringResource(MR.strings.set_as_cover),
+                    checked = setAsCover,
+                    onCheckedChange = { setAsCover = it },
+                )
+            }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = { onConfirm(setAsCover) }) {
                 Text(stringResource(MR.strings.action_ok))
             }
         },

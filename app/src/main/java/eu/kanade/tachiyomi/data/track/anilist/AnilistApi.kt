@@ -16,6 +16,8 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import mihon.graphql.anilist.AniListAddMangaMutation
 import mihon.graphql.anilist.AniListDeleteMangaMutation
+import mihon.graphql.anilist.AniListGetBannerQuery
+import mihon.graphql.anilist.AniListGetCoverQuery
 import mihon.graphql.anilist.AniListGetCurrentUserQuery
 import mihon.graphql.anilist.AniListGetLibMangaQuery
 import mihon.graphql.anilist.AniListGetMangaDetailsQuery
@@ -184,6 +186,31 @@ class AnilistApi(
                 it.Page?.media
                     ?.firstOrNull()
                     ?.toTrackSearch(trackerId)
+            }
+    }
+
+    suspend fun getCovers(remoteId: Long): List<String> {
+        return graphQlClient
+            .query(AniListGetCoverQuery(manga_id = remoteId.toInt()))
+            .execute()
+            .dataOrElse(
+                errorLog = "AniList: Failed to get covers",
+                default = { emptyList() },
+            ) {
+                val coverImage = it.Media?.coverImage
+                listOfNotNull((coverImage?.extraLarge ?: coverImage?.large)?.ifBlank { null })
+            }
+    }
+
+    suspend fun getBanners(remoteId: Long): List<String> {
+        return graphQlClient
+            .query(AniListGetBannerQuery(manga_id = remoteId.toInt()))
+            .execute()
+            .dataOrElse(
+                errorLog = "AniList: Failed to get banners",
+                default = { emptyList() },
+            ) {
+                listOfNotNull(it.Media?.bannerImage?.ifBlank { null })
             }
     }
 

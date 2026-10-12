@@ -2,10 +2,14 @@ package eu.kanade.tachiyomi.data.backup.create.creators
 
 import dev.zacsweers.metro.Inject
 import eu.kanade.tachiyomi.data.backup.create.BackupOptions
+import eu.kanade.tachiyomi.data.backup.models.BackupArtwork
 import eu.kanade.tachiyomi.data.backup.models.BackupHistory
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.toBackupChapter
 import eu.kanade.tachiyomi.data.backup.models.toBackupTracking
+import eu.kanade.tachiyomi.data.cover.BannerCache
+import eu.kanade.tachiyomi.data.cover.BannerLibrary
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import mihon.core.common.extensions.toByteArray
 import mihon.core.common.extensions.toEpochMillisOrZero
@@ -23,6 +27,9 @@ class MangaBackupCreator(
     private val trackRepository: TrackRepository,
     private val getCategories: GetCategories,
     private val getHistory: GetHistory,
+    private val coverLibrary: CoverLibrary,
+    private val bannerLibrary: BannerLibrary,
+    private val bannerCache: BannerCache,
 ) {
 
     suspend operator fun invoke(mangas: List<Manga>, options: BackupOptions): List<BackupManga> {
@@ -73,6 +80,23 @@ class MangaBackupCreator(
                     mangaObject.history = history
                 }
             }
+        }
+
+        if (options.artworkLibraries) {
+            val covers = coverLibrary.getImages(manga.id)
+                .map { BackupArtwork(image = it.readBytes(), label = coverLibrary.getLabel(it)) }
+            if (covers.isNotEmpty()) {
+                mangaObject.coverLibrary = covers
+            }
+
+            val banners = bannerLibrary.getImages(manga.id)
+                .map { BackupArtwork(image = it.readBytes(), label = bannerLibrary.getLabel(it)) }
+            if (banners.isNotEmpty()) {
+                mangaObject.bannerLibrary = banners
+            }
+
+            // Unlike a cover, the applied banner has no remote url to restore it from
+            mangaObject.banner = bannerCache.getBanner(manga.id)?.readBytes()
         }
 
         return mangaObject

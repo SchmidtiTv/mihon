@@ -10,6 +10,7 @@ data class BackupOptions(
     val tracking: Boolean = true,
     val history: Boolean = true,
     val readEntries: Boolean = true,
+    val artworkLibraries: Boolean = false,
     val appSettings: Boolean = true,
     val extensionStores: Boolean = true,
     val sourceSettings: Boolean = true,
@@ -23,6 +24,7 @@ data class BackupOptions(
         tracking,
         history,
         readEntries,
+        artworkLibraries,
         appSettings,
         extensionStores,
         sourceSettings,
@@ -67,6 +69,12 @@ data class BackupOptions(
                 setter = { options, enabled -> options.copy(readEntries = enabled) },
                 enabled = { it.libraryEntries },
             ),
+            Entry(
+                label = MR.strings.artwork_libraries,
+                getter = BackupOptions::artworkLibraries,
+                setter = { options, enabled -> options.copy(artworkLibraries = enabled) },
+                enabled = { it.libraryEntries },
+            ),
         )
 
         val settingsOptions = listOf(
@@ -93,18 +101,23 @@ data class BackupOptions(
             ),
         )
 
-        fun fromBooleanArray(array: BooleanArray) = BackupOptions(
-            libraryEntries = array[0],
-            categories = array[1],
-            chapters = array[2],
-            tracking = array[3],
-            history = array[4],
-            readEntries = array[5],
-            appSettings = array[6],
-            extensionStores = array[7],
-            sourceSettings = array[8],
-            privateSettings = array[9],
-        )
+        fun fromBooleanArray(array: BooleanArray): BackupOptions {
+            // A backup queued before the artwork library option existed stored one entry less
+            val legacy = array.size < 11
+            return BackupOptions(
+                libraryEntries = array[0],
+                categories = array[1],
+                chapters = array[2],
+                tracking = array[3],
+                history = array[4],
+                readEntries = array[5],
+                artworkLibraries = !legacy && array[6],
+                appSettings = if (legacy) array[6] else array[7],
+                extensionStores = if (legacy) array[7] else array[8],
+                sourceSettings = if (legacy) array[8] else array[9],
+                privateSettings = if (legacy) array[9] else array[10],
+            )
+        }
     }
 
     data class Entry(

@@ -1,0 +1,13 @@
+query KitsuGetCover(
+  $id: ID!,
+) {
+  findMangaById(
+    id: $id,
+  ) {
+    posterImage {
+      original {
+        url
+      }
+    }
+  }
+}

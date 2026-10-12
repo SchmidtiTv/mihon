@@ -27,6 +27,7 @@ import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.cover.CoverLibrary
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
@@ -37,6 +38,7 @@ import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.ui.manga.artwork.keepLocalCover
 import eu.kanade.tachiyomi.ui.reader.loader.ChapterLoader
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
 import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
@@ -124,6 +126,7 @@ class ReaderViewModel(
     private val setMangaViewerFlags: SetMangaViewerFlags,
     private val getIncognitoState: GetIncognitoState,
     private val libraryPreferences: LibraryPreferences,
+    private val coverLibrary: CoverLibrary,
     private val coverManager: LocalCoverManager,
     private val updateManga: UpdateManga,
     private val coverCache: CoverCache,
@@ -1028,9 +1031,12 @@ class ReaderViewModel(
     }
 
     /**
-     * Sets the image of the selected page as cover and notifies the UI of the result.
+     * Adds the image of the selected page to the cover library of the entry, so it can be applied
+     * from the cover library, and notifies the UI of the result.
+     *
+     * @param setAsCover whether the image is also applied as the cover of the entry right away.
      */
-    fun setAsCover() {
+    fun addToCoverLibrary(setAsCover: Boolean) {
         val page = (state.value.dialog as? Dialog.PageActions)?.page
         if (page?.status != Page.State.Ready) return
         val manga = manga ?: return
@@ -1039,22 +1045,29 @@ class ReaderViewModel(
         viewModelScope.launch {
             val result = appScope.async {
                 try {
-                    manga.editCover(coverManager, stream(), updateManga, coverCache)
                     if (manga.isLocal() || manga.favorite) {
-                        SetAsCoverResult.Success
+                        val file = coverLibrary.addImageIfAbsent(manga.id, stream().use { it.readBytes() })
+                        if (setAsCover) {
+                            coverLibrary.keepLocalCover(context, manga, coverManager)
+                            file.inputStream().use { manga.editCover(coverManager, it, updateManga, coverCache) }
+                            CoverLibraryAddResult.AddedAsCover
+                        } else {
+                            CoverLibraryAddResult.Added
+                        }
                     } else {
-                        SetAsCoverResult.AddToLibraryFirst
+                        CoverLibraryAddResult.AddToLibraryFirst
                     }
                 } catch (e: Exception) {
-                    SetAsCoverResult.Error
+                    CoverLibraryAddResult.Error
                 }
             }.await()
-            eventChannel.send(Event.SetCoverResult(result))
+            eventChannel.send(Event.CoverLibraryAddResult(result))
         }
     }
 
-    enum class SetAsCoverResult {
-        Success,
+    enum class CoverLibraryAddResult {
+        Added,
+        AddedAsCover,
         AddToLibraryFirst,
         Error,
     }
@@ -1138,7 +1151,7 @@ class ReaderViewModel(
         data object ReloadViewerChapters : Event
         data object PageChanged : Event
         data class SetOrientation(val orientation: Int) : Event
-        data class SetCoverResult(val result: SetAsCoverResult) : Event
+        data class CoverLibraryAddResult(val result: ReaderViewModel.CoverLibraryAddResult) : Event
 
         data class SavedImage(val result: SaveImageResult) : Event
         data class ShareImage(val uri: Uri, val page: ReaderPage) : Event

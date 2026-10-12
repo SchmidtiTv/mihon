@@ -6,6 +6,7 @@ import tachiyomi.i18n.MR
 data class RestoreOptions(
     val libraryEntries: Boolean = true,
     val categories: Boolean = true,
+    val artworkLibraries: Boolean = true,
     val appSettings: Boolean = true,
     val extensionStores: Boolean = true,
     val sourceSettings: Boolean = true,
@@ -14,6 +15,7 @@ data class RestoreOptions(
     fun asBooleanArray() = booleanArrayOf(
         libraryEntries,
         categories,
+        artworkLibraries,
         appSettings,
         extensionStores,
         sourceSettings,
@@ -34,6 +36,11 @@ data class RestoreOptions(
                 setter = { options, enabled -> options.copy(categories = enabled) },
             ),
             Entry(
+                label = MR.strings.artwork_libraries,
+                getter = RestoreOptions::artworkLibraries,
+                setter = { options, enabled -> options.copy(artworkLibraries = enabled) },
+            ),
+            Entry(
                 label = MR.strings.app_settings,
                 getter = RestoreOptions::appSettings,
                 setter = { options, enabled -> options.copy(appSettings = enabled) },
@@ -50,13 +57,18 @@ data class RestoreOptions(
             ),
         )
 
-        fun fromBooleanArray(array: BooleanArray) = RestoreOptions(
-            libraryEntries = array[0],
-            categories = array[1],
-            appSettings = array[2],
-            extensionStores = array[3],
-            sourceSettings = array[4],
-        )
+        fun fromBooleanArray(array: BooleanArray): RestoreOptions {
+            // An array queued before the artwork library option existed stored one entry less
+            val legacy = array.size < 6
+            return RestoreOptions(
+                libraryEntries = array[0],
+                categories = array[1],
+                artworkLibraries = legacy || array[2],
+                appSettings = if (legacy) array[2] else array[3],
+                extensionStores = if (legacy) array[3] else array[4],
+                sourceSettings = if (legacy) array[4] else array[5],
+            )
+        }
     }
 
     data class Entry(

@@ -18,6 +18,8 @@ import kotlinx.serialization.json.Json
 import mihon.graphql.kitsu.KitsuAddLibMangaMutation
 import mihon.graphql.kitsu.KitsuDeleteLibEntryMutation
 import mihon.graphql.kitsu.KitsuFindLibMangaQuery
+import mihon.graphql.kitsu.KitsuGetBannerQuery
+import mihon.graphql.kitsu.KitsuGetCoverQuery
 import mihon.graphql.kitsu.KitsuGetCurrentAccountQuery
 import mihon.graphql.kitsu.KitsuGetMangaDetailsByIdQuery
 import mihon.graphql.kitsu.KitsuGetMangaDetailsBySlugQuery
@@ -253,6 +255,30 @@ class KitsuApi(
                 default = { null },
             ) {
                 it.findMangaBySlug?.toTrackSearch(trackerId)
+            }
+    }
+
+    suspend fun getCovers(remoteId: Long): List<String> {
+        return graphQlClient
+            .query(KitsuGetCoverQuery(id = remoteId.toString()))
+            .execute()
+            .dataOrElse(
+                errorLog = "Kitsu: Failed to get covers",
+                default = { emptyList() },
+            ) {
+                listOfNotNull(it.findMangaById?.posterImage?.original?.url?.ifBlank { null })
+            }
+    }
+
+    suspend fun getBanners(remoteId: Long): List<String> {
+        return graphQlClient
+            .query(KitsuGetBannerQuery(id = remoteId.toString()))
+            .execute()
+            .dataOrElse(
+                errorLog = "Kitsu: Failed to get banners",
+                default = { emptyList() },
+            ) {
+                listOfNotNull(it.findMangaById?.bannerImage?.original?.url?.ifBlank { null })
             }
     }
 
